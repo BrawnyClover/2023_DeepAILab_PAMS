@@ -7,7 +7,7 @@ import cv2
 import torch
 import torch.nn.functional as F
 import torch.nn.utils as utils
-from pip  import SummaryWriter
+from tensorboardX  import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 
@@ -113,6 +113,7 @@ class Trainer():
             nor_loss = args.w_l1 * F.l1_loss(s_sr, hr)
             att_loss = args.w_at * util.at_loss(s_res, t_res)
 
+            # L_SR
             loss = nor_loss  + att_loss
 
             loss.backward()
@@ -167,7 +168,7 @@ class Trainer():
                         sr, s_res, _ = model(lr/255., scale)
                         sr *= 255. 
                     else:
-                        sr, s_res = model(lr, scale)
+                        sr, s_res = model(lr)
                     sr = utility.quantize(sr, self.args.rgb_range)
                     save_list = [sr]
                     cur_psnr = utility.calc_psnr(
@@ -238,7 +239,9 @@ def main():
         loader = data.Data(args)
         if args.model.lower() == 'edsr':
             t_model = EDSR(args, is_teacher=True).to(device)
-            s_model = PAMS_EDSR(args, bias=True).to(device)
+
+            # 양자화된 모델 S
+            s_model = PAMS_EDSR(args, k_bits=8, ema_epoch=10, bias=True).to(device)
 
         # @deprecated
         # elif args.model.lower() == 'rdn':

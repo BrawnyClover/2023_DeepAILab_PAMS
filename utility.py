@@ -99,6 +99,7 @@ class checkpoint():
 
     def add_log(self, log):
         self.log = torch.cat([self.log, log])
+        self.ssim_log = torch.cat([self.ssim_log, log])
 
     def write_log(self, log, refresh=False):
         print(log)
@@ -260,29 +261,32 @@ def tensor2img(tensor, out_type=np.uint8, min_max=(0, 1)):
         # Important. Unlike matlab, numpy.unit8() WILL NOT round by default.
     return img_np.astype(out_type)
 
-def calc_ssim(img1, img2, scale):
+def calc_ssim(img1, img2, scale=2, benchmark=False):
+    # calc_ssim of SMSR
     '''calculate SSIM
     the same outputs as MATLAB's
     img1, img2: [0, 255]
     '''
-    shave = scale
-    
-    img1 = tensor2img(img1) / 255.
-    img2 = tensor2img(img2) / 255.
+    if benchmark:
+        border = math.ceil(scale)
+    else:
+        border = math.ceil(scale) + 6
 
-    # print(img1.shape, img2.shape)
-    # img1 = img1[shave:-shave, shave:-shave, :]
-    # img2 = img2[shave:-shave, shave:-shave, :]
-    
-    img1 = bgr2ycbcr(img1) * 255
-    img2 = bgr2ycbcr(img2) * 255
+    img1 = img1.data.squeeze().float().clamp(0, 255).round().cpu().numpy()
+    img1 = np.transpose(img1, (1, 2, 0))
+    img2 = img2.data.squeeze().cpu().numpy()
+    img2 = np.transpose(img2, (1, 2, 0))
 
-    # print(img1.shape, img2.shape)
-
+    img1_y = np.dot(img1, [65.738, 129.057, 25.064]) / 255.0 + 16.0
+    img2_y = np.dot(img2, [65.738, 129.057, 25.064]) / 255.0 + 16.0
     if not img1.shape == img2.shape:
         raise ValueError('Input images must have the same dimensions.')
-    if img1.ndim == 2:
-        return ssim(img1, img2)
+    h, w = img1.shape[:2]
+    img1_y = img1_y[border:h - border, border:w - border]
+    img2_y = img2_y[border:h - border, border:w - border]
+
+    if img1_y.ndim == 2:
+        return ssim(img1_y, img2_y)
     elif img1.ndim == 3:
         if img1.shape[2] == 3:
             ssims = []

@@ -95,7 +95,7 @@ parser.add_argument('--reduction', type=int, default=16,
 # Training specifications
 parser.add_argument('--reset', action='store_true',
                     help='reset the training')
-parser.add_argument('--test_every', type=int, default=1000,
+parser.add_argument('--test_every', type=int, default=100,
                     help='do test per every N batches')
 parser.add_argument('--epochs', type=int, default=30,
                     help='number of epochs to train')
@@ -170,7 +170,8 @@ args.data_train = args.data_train.split('+')
 args.data_test = args.data_test.split('+')
 
 if args.epochs == 0:
-    args.epochs = 1e8
+    # args.epochs = 1e8
+    args.epochs=1
 
 for arg in vars(args):
     if vars(args)[arg] == 'True':

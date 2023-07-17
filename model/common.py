@@ -4,11 +4,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from model.quant_ops import pams_quant_act
+
 def default_conv(in_channels, out_channels, kernel_size, bias=True):
     return nn.Conv2d(
         in_channels, out_channels, kernel_size,
         padding=(kernel_size//2), bias=bias)
 
+# H(x) = F(x)+x
 class ShortCut(nn.Module):
     def __init__(self):
         super(ShortCut, self).__init__()
@@ -62,6 +65,45 @@ class ResBlock(nn.Module):
     def forward(self, x):
         residual = self.shortcut(x)
         res = self.body(x).mul(self.res_scale)
+        res += residual
+
+        return res
+
+class PAMSBlock(nn.Module):
+    def __init__(
+        self, conv, n_feats, kernel_size, k_bits, ema_epoch,
+        bias=True, act=nn.ReLU(True), res_scale=1):
+
+        super(PAMSBlock, self).__init__()
+        m = []
+
+        # residual -> quant
+        # conv          |
+        # relu          |
+        # quant_act     |
+        # conv          |
+        #   |------------
+        # result
+        self.quant_pre = pams_quant_act(k_bits, ema_epoch)
+        self.quant_resid = pams_quant_act(k_bits, ema_epoch)
+        self.quant_act = pams_quant_act(k_bits, ema_epoch)
+        self.quant_body = pams_quant_act(k_bits, ema_epoch)
+
+        # m.append(self.quant_pre)
+        m.append(conv(n_feats, n_feats, kernel_size, bias=bias, k_bits=k_bits))
+        m.append(act)
+        m.append(self.quant_act)
+        m.append(conv(n_feats, n_feats, kernel_size, bias=bias, k_bits=k_bits))
+
+        self.body = nn.Sequential(*m)
+        self.res_scale = res_scale
+        self.shortcut = ShortCut()
+
+    def forward(self, x):
+        residual = self.shortcut(x)
+        residual = self.quant_resid(residual)
+        res = self.body(residual).mul(self.res_scale)
+        res = self.quant_body(res)
         res += residual
 
         return res

@@ -13,7 +13,6 @@ from torch.autograd import Variable
 
 from model import common
 from model.quant_ops import conv3x3
-from model.quant_ops import pams_quant_act
 from model.quant_ops import quant_conv3x3
 
 
@@ -27,15 +26,14 @@ url = {
 }
 
 class PAMS_EDSR(nn.Module):
-    def __init__(self, args, is_teacher, conv=quant_conv3x3):
+    def __init__(self, args, k_bits, ema_epoch, conv=quant_conv3x3, bias=True):
         super(PAMS_EDSR, self).__init__()
 
         n_resblocks = args.n_resblocks
         n_feats = args.n_feats
         kernel_size = 3 
         scale = args.scale[0]
-        act = pams_quant_act
-        self.is_teacher = is_teacher
+        act = nn.ReLU()
         self.url = url['r{}f{}x{}'.format(n_resblocks, n_feats, scale)]
         self.sub_mean = common.MeanShift(args.rgb_range)
         self.add_mean = common.MeanShift(args.rgb_range, sign=1)
@@ -45,8 +43,8 @@ class PAMS_EDSR(nn.Module):
 
         # define body module
         m_body = [
-            common.ResBlock(
-                conv, n_feats, kernel_size, act=act, res_scale=args.res_scale
+            common.PAMSBlock(
+                conv, n_feats, kernel_size, k_bits=k_bits, ema_epoch=ema_epoch, act=act, res_scale=args.res_scale
             ) for _ in range(n_resblocks)
         ]
         m_body.append(conv(n_feats, n_feats, kernel_size))
@@ -70,7 +68,7 @@ class PAMS_EDSR(nn.Module):
         x = self.tail(res)
         x = self.add_mean(x)
         
-        if self.is_teacher:
-            return x, out
-        else:
-            return x
+        # if self.is_teacher:
+        #     return x, out
+        # else:
+        return x, out
