@@ -4,6 +4,7 @@ sys.path.append('./')
 # from .dataloader import MSDataLoader
 from torch.utils.data import dataloader
 from torch.utils.data import ConcatDataset
+from torch.utils.data.distributed import DistributedSampler
 
 # This is a simple wrapper function for ConcatDataset
 class MyConcatDataset(ConcatDataset):
@@ -49,7 +50,8 @@ class Data:
                     testset,
                     batch_size=1,
                     shuffle=False,
-                    pin_memory=not args.cpu, # Due to W pthreadpool-cpp.cc:90 Warning
+                    # pin_memory=not args.cpu, # Due to W pthreadpool-cpp.cc:90 Warning
+                    pin_memory=not args.cpu,
                     num_workers=args.n_threads,
                 )
             )

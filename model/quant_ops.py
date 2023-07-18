@@ -137,6 +137,9 @@ class QuantConv2d(nn.Module):
         self.k_bits = k_bits
         self.quant_weight = quant_weight(k_bits = k_bits)
         self.output = None
+
+        
+        # self.conv = nn.Conv2d(self.in_channels, self.out_channels, self.kernel_size, self.stride, self.padding, self.dilation, self.groups)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -155,9 +158,8 @@ class QuantConv2d(nn.Module):
             nn.init.constant_(self.bias,0.0)
 
     def forward(self, input, order=None):
-        # conv = nn.Conv2d(self.in_channels, self.out_channels, self.kernel_size, self.stride, self.padding, self.dilation, self.groups)
-        # conv.weight = self.quant_weight(self.weight)
-        # output = conv(input)
+        # self.conv.weight.data = self.quant_weight(self.weight)
+        # output = self.conv(input)
         output = nn.functional.conv2d(input, self.quant_weight(self.weight), stride=self.stride, padding=self.padding, dilation=self.dilation, groups=self.groups)
         return output
 

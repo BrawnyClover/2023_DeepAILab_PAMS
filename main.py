@@ -17,6 +17,7 @@ import utility
 from model.edsr import PAMS_EDSR
 from model.edsr_org import EDSR
 
+
 # @deprecated
 # from model.rdn import PAMS_RDN
 # from model.rdn_org import RDN
@@ -32,6 +33,8 @@ torch.manual_seed(args.seed)
 checkpoint = utility.checkpoint(args)
 device = torch.device('cpu' if args.cpu else f'cuda:{args.gpu_id}')
 
+
+
 class Trainer():
     def __init__(self, args, loader, t_model, s_model, ckp):
         self.args = args
@@ -41,8 +44,8 @@ class Trainer():
         self.ckp = ckp
         self.loader_train = loader.loader_train
         self.loader_test = loader.loader_test
-        self.t_model = t_model
-        self.s_model = s_model
+        self.t_model = t_model.to(device)
+        self.s_model = s_model.to(device)
         arch_param = [v for k, v in self.s_model.named_parameters() if 'alpha' not in k]
         alpha_param = [v for k, v in self.s_model.named_parameters() if 'alpha' in k]
 
