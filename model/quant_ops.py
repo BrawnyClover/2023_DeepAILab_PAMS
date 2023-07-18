@@ -66,13 +66,13 @@ class quant_weight(nn.Module):
     def __init__(self, k_bits):
         super(quant_weight, self).__init__()
         self.n = k_bits
-        self.max = 0
         self.round = TorchRound()
 
     def forward(self, input):
-        self.max = quant_max(input)
-        s = self.max / (pow(2, self.n - 1) - 1)
+        max = quant_max(input)
+        s = max / (pow(2, self.n - 1) - 1)
         q_weight = s * self.round(input / s)
+        del s
         return q_weight
 
 class pams_quant_act(nn.Module):
@@ -82,13 +82,14 @@ class pams_quant_act(nn.Module):
     def __init__(self, k_bits, ema_epoch=1, decay=0.9997):
         super(pams_quant_act, self).__init__()
         # Code to Here
-        self.alpha = torch.nn.Parameter(torch.tensor(1, dtype=float))
-        self.n = k_bits
+        self.alpha = nn.Parameter(torch.tensor(1, dtype=torch.float))
+        self.k_bits = k_bits
         self.decay = decay
         self.ema_epoch = ema_epoch
         self.epoch = 1
-        self.reset_parameter()
         self.round = TorchRound()
+        self.register_buffer('max_val', torch.ones(1))
+        self.reset_parameter()
 
     def reset_parameter(self):
         nn.init.constant_(self.alpha, 10)
@@ -104,13 +105,14 @@ class pams_quant_act(nn.Module):
     def forward(self, x):
         if self.epoch > self.ema_epoch or self.training == False:
             # f(x) = max( min(x, a), -a)
-            x = torch.max(torch.min(x, self.alpha), -self.alpha)
+            act = torch.max(torch.min(x, self.alpha), -self.alpha)
         else:
             self._ema(x)
-              
-            self.alpha.data = self.max_val
-        s = self.alpha / (pow(2, self.n - 1) - 1)
-        q_act = self.round(x/s)*s
+            act = x
+            self.alpha.data = self.max_val.unsqueeze(0)
+
+        s = self.alpha / (pow(2, self.k_bits - 1) - 1)
+        q_act = self.round(act/s)*s
         return q_act
 
 class QuantConv2d(nn.Module):
@@ -160,8 +162,8 @@ class QuantConv2d(nn.Module):
     def forward(self, input, order=None):
         # self.conv.weight.data = self.quant_weight(self.weight)
         # output = self.conv(input)
-        output = nn.functional.conv2d(input, self.quant_weight(self.weight), stride=self.stride, padding=self.padding, dilation=self.dilation, groups=self.groups)
-        return output
+        return nn.functional.conv2d(input, self.quant_weight(self.weight), bias=self.bias, stride=self.stride, padding=self.padding, dilation=self.dilation, groups=self.groups)
+        # return output
 
 def conv3x3(in_channels, out_channels,kernel_size=3,stride=1,padding =1,bias= True):
     return nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding, bias=bias)

@@ -7,7 +7,7 @@ import cv2
 import torch
 import torch.nn.functional as F
 import torch.nn.utils as utils
-from tensorboardX  import SummaryWriter
+from tensorboardX import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 
@@ -16,9 +16,6 @@ import model
 import utility
 from model.edsr import PAMS_EDSR
 from model.edsr_org import EDSR
-
-
-# @deprecated
 # from model.rdn import PAMS_RDN
 # from model.rdn_org import RDN
 
@@ -33,8 +30,6 @@ torch.manual_seed(args.seed)
 checkpoint = utility.checkpoint(args)
 device = torch.device('cpu' if args.cpu else f'cuda:{args.gpu_id}')
 
-
-
 class Trainer():
     def __init__(self, args, loader, t_model, s_model, ckp):
         self.args = args
@@ -44,8 +39,8 @@ class Trainer():
         self.ckp = ckp
         self.loader_train = loader.loader_train
         self.loader_test = loader.loader_test
-        self.t_model = t_model.to(device)
-        self.s_model = s_model.to(device)
+        self.t_model = t_model
+        self.s_model = s_model
         arch_param = [v for k, v in self.s_model.named_parameters() if 'alpha' not in k]
         alpha_param = [v for k, v in self.s_model.named_parameters() if 'alpha' in k]
 
@@ -116,7 +111,6 @@ class Trainer():
             nor_loss = args.w_l1 * F.l1_loss(s_sr, hr)
             att_loss = args.w_at * util.at_loss(s_res, t_res)
 
-            # L_SR
             loss = nor_loss  + att_loss
 
             loss.backward()
@@ -242,11 +236,10 @@ def main():
         loader = data.Data(args)
         if args.model.lower() == 'edsr':
             t_model = EDSR(args, is_teacher=True).to(device)
+            # t_model = torch.nn.DataParallel(t_model)
 
-            # 양자화된 모델 S
-            s_model = PAMS_EDSR(args, k_bits=8, ema_epoch=10, bias=True).to(device)
-
-        # @deprecated
+            s_model = PAMS_EDSR(args, bias=True).to(device)
+            
         # elif args.model.lower() == 'rdn':
         #     t_model = RDN(args, is_teacher=True).to(device)
         #     s_model = PAMS_RDN(args).to(device).to(device)
@@ -326,6 +319,8 @@ def main():
 
         checkpoint.done()
         print(f'{args.save} done!')
+
+        torch.save(s_model.state_dict(), "./s_model.pt")
 
 
 if __name__ == '__main__':

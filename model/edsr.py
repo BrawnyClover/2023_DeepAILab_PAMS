@@ -26,14 +26,15 @@ url = {
 }
 
 class PAMS_EDSR(nn.Module):
-    def __init__(self, args, k_bits, ema_epoch, conv=quant_conv3x3, bias=True):
+    def __init__(self, args, conv=quant_conv3x3, bias=True, k_bits=8):
         super(PAMS_EDSR, self).__init__()
 
         n_resblocks = args.n_resblocks
         n_feats = args.n_feats
         kernel_size = 3 
         scale = args.scale[0]
-        act = nn.ReLU()
+        act = nn.ReLU(True)
+        self.k_bits = k_bits
         self.url = url['r{}f{}x{}'.format(n_resblocks, n_feats, scale)]
         self.sub_mean = common.MeanShift(args.rgb_range)
         self.add_mean = common.MeanShift(args.rgb_range, sign=1)
@@ -44,15 +45,15 @@ class PAMS_EDSR(nn.Module):
         # define body module
         m_body = [
             common.PAMSBlock(
-                conv, n_feats, kernel_size, k_bits=k_bits, ema_epoch=ema_epoch, act=act, res_scale=args.res_scale
+                conv, n_feats, kernel_size, k_bits=k_bits, act=act, res_scale=args.res_scale
             ) for _ in range(n_resblocks)
         ]
-        m_body.append(conv(n_feats, n_feats, kernel_size))
+        m_body.append(conv3x3(n_feats, n_feats, kernel_size, bias=bias))
 
         # define tail module
         m_tail = [
-            common.Upsampler(conv, scale, n_feats, act=False),
-            conv(n_feats, args.n_colors, kernel_size)
+            common.Upsampler(conv3x3, scale, n_feats, act=False),
+            nn.Conv2d(n_feats, args.n_colors, kernel_size, padding=(kernel_size//2))
         ]
 
         self.head = nn.Sequential(*m_head)

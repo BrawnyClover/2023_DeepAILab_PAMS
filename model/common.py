@@ -71,8 +71,8 @@ class ResBlock(nn.Module):
 
 class PAMSBlock(nn.Module):
     def __init__(
-        self, conv, n_feats, kernel_size, k_bits, ema_epoch,
-        bias=True, act=nn.ReLU(True), res_scale=1):
+        self, conv, n_feats, kernel_size, k_bits, ema_epoch=1,
+        bias=True, act=nn.ReLU(False), res_scale=1):
 
         super(PAMSBlock, self).__init__()
         m = []
@@ -84,7 +84,6 @@ class PAMSBlock(nn.Module):
         # conv          |
         #   |------------
         # result
-        self.quant_pre = pams_quant_act(k_bits, ema_epoch)
         self.quant_resid = pams_quant_act(k_bits, ema_epoch)
         self.quant_act = pams_quant_act(k_bits, ema_epoch)
         self.quant_body = pams_quant_act(k_bits, ema_epoch)
@@ -101,8 +100,8 @@ class PAMSBlock(nn.Module):
 
     def forward(self, x):
         residual = self.shortcut(x)
-        residual = self.quant_resid(residual)
-        res = self.body(residual).mul(self.res_scale)
+        residual1 = self.quant_resid(residual)
+        res = self.body(residual1).mul(self.res_scale)
         res = self.quant_body(res)
         res += residual
 
