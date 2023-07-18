@@ -189,6 +189,7 @@ class SRData(data.Dataset):
         else:
             filename, _ = os.path.splitext(os.path.basename(f_hr))
             if self.args.ext == 'img' or self.benchmark:
+                # print(f_hr)
                 hr = imageio.imread(f_hr)
                 lr = imageio.imread(f_lr)
             elif self.args.ext.find('sep') >= 0:
