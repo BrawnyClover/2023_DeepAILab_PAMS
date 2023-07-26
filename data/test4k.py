@@ -18,7 +18,7 @@ class test4k(srdata.SRData):
         self.apath = os.path.join(dir_data, 'DIV2K', self.name)
         self.dir_hr = os.path.join(self.apath, 'HR')
         self.dir_lr = os.path.join(self.apath, 'LR')
-        self.ext = ('', '.png')
+        self.ext = ('', 'x4.png')
 
 
 

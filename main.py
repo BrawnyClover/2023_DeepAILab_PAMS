@@ -249,8 +249,14 @@ def main():
         if args.pre_train is not None:
             t_checkpoint = torch.load(args.pre_train) 
             t_checkpoint = t_checkpoint['state_dict'] if 'state_dict' in t_checkpoint else t_checkpoint
-            t_model.load_state_dict(t_checkpoint)
+            
 
+            temp = {}
+            for k, v in t_checkpoint.items():
+                new_key = k.replace("modelbody", "body")
+                temp[new_key] = v
+            t_checkpoint = temp
+            t_model.load_state_dict(t_checkpoint)
             # quantized model load pre-train weighs
             s_model_dict = s_model.state_dict()
             pre_trained_dict = {}
@@ -293,14 +299,16 @@ def main():
         
         if args.test_only:
             if args.refine is None:
-                ckpt = torch.load(f'{args.save}/model/model_best.pth.tar')
-                refine_path = f'{args.save}/model/model_best.pth.tar'
+                # ckpt = torch.load(f'{args.save}/model/model_best.pth.tar')
+                ckpt = torch.load("./pams_edsr_4bit_x4.pt")
+                # refine_path = f'{args.save}/model/model_best.pth.tar'
+                refine_path = "./pams_edsr_4bit_x4.pt"
             else:
                 ckpt = torch.load(f'{args.refine}')
                 refine_path = args.refine
 
             s_checkpoint = ckpt['state_dict'] if 'state_dict' in ckpt else ckpt
-            s_model.load_state_dict(s_checkpoint)
+            s_model.load_state_dict(torch.load("./pams_edsr_4bit_x4.pt"))
             print(f"Load model from {refine_path}")
 
         t = Trainer(args, loader, t_model, s_model, checkpoint)
@@ -320,7 +328,7 @@ def main():
         checkpoint.done()
         print(f'{args.save} done!')
 
-        torch.save(s_model.state_dict(), "./s_model.pt")
+        torch.save(s_model.state_dict(), "./pams_edsr_3bit_x4.pt")
 
 
 if __name__ == '__main__':

@@ -1,12 +1,6 @@
 #!/usr/bin/python3.6  
 # -*- coding: utf-8 -*-
 
-'''
-4. SKT loss 구현
-./utils/common.py/at_loss()
-'''
-
-
 from __future__ import absolute_import
 from pathlib import Path
 import datetime
@@ -209,21 +203,11 @@ def as_markdown(config):
 
     return text
 
+def at(x):
+    return F.normalize(x.pow(2).mean(1).view(x.size(0), -1))
 
-# skt loss
-def at_loss(s_res, t_res, p=2):
-    b, d, h, w = s_res.shape
-
-    s_res = s_res.reshape([-1, h, w])
-    t_res = t_res.reshape([-1, h, w])
-
-    F_s = torch.sum(torch.pow(s_res, 2), dim=0)
-    F_t = torch.sum(torch.pow(t_res, 2), dim=0)
-
-    F_s_norm = torch.norm(F_s, 2)
-    F_t_norm = torch.norm(F_t, 2)
-    ret_val = torch.norm(F_s/F_s_norm - F_t/F_t_norm)
-    return ret_val 
+def at_loss(x, y):
+    return (at(x) - at(y)).pow(2).mean()
 
 # def distillation(criterion,outputs, labels, teacher_outputs, params):
 #     """
@@ -333,11 +317,3 @@ def save_checkpoint(state, is_best, checkpoint='checkpoint', filename='checkpoin
     torch.save(state, filepath)
     if is_best:
         shutil.copyfile(filepath, os.path.join(checkpoint, 'model_best.pth.tar'))
-
-
-if __name__ == "__main__":
-    s_res = np.array([[[1, 1, 1],[2,2,2],[3,3,3]],[[2, 2, 2],[3,3,3],[1,1,1]],[[3, 3, 3],[1,1,1],[2,2,2]]])
-    t_res = np.array([[[3, 3, 3],[1,1,1],[2,2,2]],[[1, 1, 1],[2,2,2],[3,3,3]],[[2, 2, 2],[3,3,3],[1,1,1]]])
-    lskt = at_loss(s_res, t_res)
-    print(lskt)
-    
